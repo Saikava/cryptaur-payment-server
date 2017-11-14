@@ -6,7 +6,7 @@ Payment server for Cryptaur crowdsale platform
 
 https://cryptaur.com/
 
-Payment server is a part of [Cryptaur crowdsale platform](https://github.com/Cryptaur/cryptaur-crowdsale-platform)
+Cryptaur payment server is a part of [Cryptaur crowdsale platform](https://github.com/Cryptaur/cryptaur-crowdsale-platform)
 
 ---
 
