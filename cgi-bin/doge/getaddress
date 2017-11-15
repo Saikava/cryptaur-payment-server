@@ -1,0 +1,44 @@
+#! /usr/bin/env python
+
+import os, sys, subprocess, traceback
+
+if str==bytes:
+    from urlparse import parse_qs, parse_qsl
+    from urllib import urlencode
+else:
+    from urllib.parse import parse_qs, parse_qsl
+    from urllib.parse import urlencode
+    sys.stdout=sys.stdout.buffer
+    sys.stdin=sys.stdin.buffer
+
+try:
+    if os.environ["REQUEST_METHOD"]!="POST":
+        sys.stdout.write(b"Status: 405 Method Not Allowed\n\nOnly POST method is allowed\n")
+        sys.exit(0)
+
+    if os.environ["CONTENT_TYPE"]!="application/x-www-form-urlencoded":
+        sys.stdout.write(b"Status: 415 Unsupported Media Type\n\nOnly x-www-form-urlencoded content type is supported\n")
+        sys.exit(0)
+
+    data=sys.stdin.read().decode("latin1")
+    query_args=parse_qs(data, keep_blank_values=True)
+except Exception:
+    sys.stdout.write(b"Status: 500 Internal Server Error\n\n"+traceback.format_exc().encode("utf8")+b"\n")
+    sys.exit(0)
+
+cryptaurInstallationDirectory="/opt/cryptaur"
+if not os.path.isdir(cryptaurInstallationDirectory):
+    cryptaurInstallationDirectory=os.path.join(os.pardir, os.pardir)
+
+coinname=os.path.basename(os.path.abspath(os.path.dirname(sys.argv[0])))
+executable=os.path.join(cryptaurInstallationDirectory, "bin", "getaddress.py")
+
+try:
+    userid=query_args["user"][0]
+except:
+    sys.stdout.write(b"Status: 400 Bad Request\n\n")
+    sys.exit(0)
+
+sys.stdout.write(b"Status: 200 OK\nContent-Type: application/json\n\n")
+sys.stdout.flush()
+subprocess.call([executable, coinname, str(userid)])
