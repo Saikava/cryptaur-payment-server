@@ -26,3 +26,7 @@ def notify(**args):
     c.perform()
     c.close()
 
+    try:
+        return json.loads(buf.getvalue())["accept"]
+    except:
+        return False
