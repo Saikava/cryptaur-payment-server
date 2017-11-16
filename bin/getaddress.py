@@ -6,7 +6,7 @@ import config, database
 coin=sys.argv[1]
 userid=int(sys.argv[2])
 
-address=database.getUserDepositAddress(coin, userid)
+address=database.DepositAddresses(coin).getAddress(userid)
 
 res={}
 res["coin"]=coin
