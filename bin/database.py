@@ -28,3 +28,12 @@ def getUserDepositAddress(coinname, userid):
             return None
         else:
             return address
+
+def listPendingAddressRequests(coinname, maxRequests = 5):
+    cur=db.cursor()
+    cur.execute("SELECT userid FROM depositAddresses WHERE coinname=%s AND pending=1 LIMIT 0, %s;", (coinname, maxRequests))
+    return [userid for (userid,) in cur.fetchall()]
+
+def storeDepositAddress(coinname, userid, address):
+    db.cursor().execute("UPDATE depositAddresses SET pending=0, address=%s WHERE coinname=%s AND userid=%s;", (address, coinname, userid))
+    db.commit()
