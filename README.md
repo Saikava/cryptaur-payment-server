@@ -2,7 +2,7 @@
 
 Payment server for Cryptaur crowdsale platform
 
-<img src="https://cryptaur.com/wp-content/uploads/2017/07/cropped-CRYPTAUR_LOGO_CENTER.png" alt="Cryptaur logo" width="150">
+<img src="https://cryptaur.github.io/images/Cryptaur-logo.png" alt="Cryptaur logo" width="150">
 
 https://cryptaur.com/
 
@@ -10,4 +10,4 @@ Cryptaur payment server is a part of [Cryptaur crowdsale platform](https://githu
 
 ---
 
-[![Cryptaur logo](https://cryptaur.com/wp-content/uploads/2017/07/cryptaur-title_all-blue-copy-e1500061139271.png "Cryptaur logo")](https://cryptaur.com/)
+[![Cryptaur logo](https://cryptaur.github.io/images/Cryptaur-logo-2.png "Cryptaur logo")](https://cryptaur.com/)
