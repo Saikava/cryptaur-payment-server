@@ -9,6 +9,7 @@ key=config.config["notify-key"]
 
 def notify(**args):
     args["nonce"]=int(time.time()*1000)
+    args["keyid"]=config.config["notify-id"]
     data=json.dumps(args, sort_keys=True)
     digest=hmac.new(binascii.a2b_hex(key), data.encode("latin1"), hashlib.sha256).digest()
 
