@@ -10,7 +10,7 @@ def depositNotify(txid, vout, userid, amount, conf):
     global coinname
 
     print("Notify deposit {0}-{1} {2} {3} for user {4} with {5} confirmations".format(txid, vout, amount, coinname.upper(), userid, conf))
-    if notify.notify(coin=coinname.upper(), txid=txid, vout=vout, userid=userid, amount=amount, conf=conf):
+    if notify.notify(reason="deposit", coin=coinname.upper(), txid=txid, vout=vout, userid=userid, amount=amount, conf=conf):
         print("> Accepted!")
         return True
     else:
@@ -28,7 +28,7 @@ def processDepositAddressRequests():
 
     for userid,address in dbda.listUnnotifiedRequests(100):
         print("Notify {0} deposit address {1} for user {2}".format(coinname.upper(), address, userid))
-        if notify.notify(coin=coinname, userid=userid, address=address):
+        if notify.notify(reason="address", coin=coinname, userid=userid, address=address):
             dbda.markAsNotified(userid)
             print("> Accepted!")
 
