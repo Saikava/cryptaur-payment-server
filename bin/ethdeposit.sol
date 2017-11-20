@@ -61,13 +61,21 @@ contract DepositWallet
 contract DepositHost is Owned, AbstractDepositHost
 {
     address public forwardAddress;
+    address public depositMaster;
     mapping (uint32 => address) public depositAddresses;
 
     event Deposit(uint32 userid, uint amountWei);
     event NewDepositAddress(uint32 userid, address depositAddress);
 
+    modifier onlyDepositMaster
+    {
+        require(owner==msg.sender || depositMaster==msg.sender);
+        _;
+    }
+
     function DepositHost() Owned()
     {
+        depositMaster=owner;
         gasAmount=3000000;
     }
 
@@ -76,7 +84,12 @@ contract DepositHost is Owned, AbstractDepositHost
         forwardAddress=_forwardAddress;
     }
 
-    function setGasAmount(uint32 _newGasAmount) public onlyOwner
+    function setDepositMaster(address _depositMaster) public onlyOwner
+    {
+        depositMaster=_depositMaster;
+    }
+
+    function setGasAmount(uint32 _newGasAmount) public onlyDepositMaster
     {
         gasAmount=_newGasAmount;
     }
@@ -92,7 +105,7 @@ contract DepositHost is Owned, AbstractDepositHost
         return depositAddresses[_userid];
     }
 
-    function generateDepositAddress(uint32 _userid) public onlyOwner
+    function generateDepositAddress(uint32 _userid) public onlyDepositMaster
     {
         if(depositAddresses[_userid]==0)
         {
