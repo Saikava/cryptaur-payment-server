@@ -8,9 +8,12 @@ coinname="eth"
 config=configlib.config["coins"][coinname]
 walletrpc=jsonrpclib.jsonrpc.Server("http://{0}:{1}".format(config["host"], config["port"]))
 
+accountIsLocked=True
 
 
 def processDepositAddressRequests():
+    global accountIsLocked
+
     dbda=database.DepositAddresses(coinname)
 
     pendingTransactions=[]
@@ -21,8 +24,11 @@ def processDepositAddressRequests():
         if address!="0x"+64*"0":
             address="0x"+address[-40:]
             dbda.storeAddress(userid, address)
-            print "existing", userid, address
         else:
+            if accountIsLocked:
+                walletrpc.personal_unlockAccount(config["deposit-master"], config["password"])
+                accountIsLocked=False
+
             txhash=walletrpc.eth_sendTransaction({"from": config["deposit-master"], "to": config["contract-address"], "data": "0x32331feb"+useridAsHex, "gas": "0x493e0"})
             pendingTransactions.append(txhash)
 
@@ -38,8 +44,15 @@ def processDepositAddressRequests():
                 userid=int(logentry["data"][-72:-64], 16)
                 address="0x"+logentry["data"][-40:]
                 dbda.storeAddress(userid, address)
-                print "new", userid, address
                 break
 
-walletrpc.personal_unlockAccount(config["deposit-master"], config["password"])
+    for userid,address in dbda.listUnnotifiedRequests(100):
+        print("Notify {0} deposit address {1} for user {2}".format(coinname.upper(), address, userid))
+        if notify.notify(reason="address", coin=coinname, userid=userid, address=address):
+            dbda.markAsNotified(userid)
+            print("> Accepted!")
+        else:
+            print("> Rejected!")
+
+
 processDepositAddressRequests()
