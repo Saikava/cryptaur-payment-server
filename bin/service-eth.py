@@ -1,7 +1,7 @@
 #! /usr/bin/env python2
 
 import json, jsonrpclib, time
-import config, database, notify
+import database, notify
 import config as configlib
 
 coinname="eth"
@@ -11,8 +11,19 @@ walletrpc=jsonrpclib.jsonrpc.Server("http://{0}:{1}".format(config["host"], conf
 accountIsLocked=True
 
 
+def depositNotify(txid, vout, userid, amount, conf):
+    global coinname
+
+    print("Notify deposit {0}-{1} {2} {3} for user {4} with {5} confirmations".format(txid, vout, amount, coinname.upper(), userid, conf))
+    if notify.notify(reason="deposit", coin=coinname.upper(), txid=txid, vout=vout, userid=userid, amount=amount, conf=conf):
+        print("> Accepted!")
+        return True
+    else:
+        print("> Rejected!")
+        return False
+
 def processDepositAddressRequests():
-    global accountIsLocked
+    global walletrpc, accountIsLocked
 
     dbda=database.DepositAddresses(coinname)
 
@@ -54,5 +65,59 @@ def processDepositAddressRequests():
         else:
             print("> Rejected!")
 
+def processIncomingDeposits():
+    global walletrpc
+
+    dbd=database.Deposits(coinname)
+
+    lastCheckedBlock=dbd.getLastCheckedBlockHeight()
+    fromBlock=0 if lastCheckedBlock is None else lastCheckedBlock+1
+    toBlock=int(walletrpc.eth_blockNumber(), 16)
+
+    new_txlist={}
+    if fromBlock<=toBlock:
+        res=walletrpc.eth_getLogs({"fromBlock": hex(fromBlock), "toBlock": hex(toBlock), "address": config["contract-address"], "topics": ["0x028be863b16e1ebb120a887a86a8c08b41d33e317f4307ef113b1ff7e7a03873"]})
+
+        for logEntry in res:
+            txid=logEntry["transactionHash"]
+            userid=int(logEntry["data"][-72:-64], 16)
+            amount=str(int(logEntry["data"][-64:], 16)).rjust(19, '0')
+            amount=amount[:-18]+"."+amount[-18:]
+            blockNumber=int(logEntry["blockNumber"], 16)
+
+            new_txlist[(txid,0)]=(userid,amount,blockNumber)
+
+    old_txlist=dbd.listUnacceptedDeposits()
+    new_unacceptedList={}
+
+    for (txid,vout),tx in new_txlist.items():
+        userid,amount,blockHeight=tx
+
+        conf=0
+        if blockHeight is not None:
+            conf=toBlock-blockHeight+1
+
+        if (txid,vout) not in old_txlist:
+            if not depositNotify(txid, vout, userid, amount, conf):
+                new_unacceptedList[(txid,vout)]=tx
+        else:
+            if not depositNotify(txid, vout, userid, amount, conf):
+                new_unacceptedList[(txid,vout)]=tx
+            del old_txlist[(txid,vout)]
+
+    for (txid,vout),tx in old_txlist.items():
+        userid,amount,blockHeight=tx
+
+        conf=0
+        if blockHeight is not None:
+            conf=toBlock-blockHeight+1
+
+        # TODO: check transaction because it may have ceased to exist
+
+        if not depositNotify(txid, vout, userid, amount, conf):
+            new_unacceptedList[(txid,vout)]=tx
+
+    dbd.setLastCheckedBlockHeight(toBlock, new_unacceptedList)
 
 processDepositAddressRequests()
+processIncomingDeposits()
