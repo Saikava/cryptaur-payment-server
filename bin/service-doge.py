@@ -118,6 +118,32 @@ def processIncomingDeposits():
 
     dbd.setLastCheckedBlockHeight(topBlockHeight, new_unacceptedList)
 
+def transferToColdWallet():
+    transfer=config.get("transfer", None)
+    if transfer is None:
+        return
+
+    minconf=transfer.get("min-conf", 0)
+    groupsize=max(transfer.get("group-size", 1), 1)
+    fee=transfer.get("fee", 0.0)
+    address=transfer.get("address")
+    if address is None:
+        return
+
+    unspent=walletrpc.listunspent(minconf, 99999999)
+    if len(unspent)>=groupsize:
+        total=int(-fee*100000000.0)
+        unspent=[tx for (w,tx) in sorted([(-tx["amount"]*tx["confirmations"],tx) for tx in unspent])][:groupsize]
+        for tx in unspent:
+            total+=int(tx["amount"]*100000000.0)
+
+        if total>0:
+            tx=walletrpc.createrawtransaction(unspent, {address: total/100000000.0})
+            tx=s.signrawtransaction(tx)
+            if tx[u"complete"]:
+                s.sendrawtransaction(tx[u"hex"])
+
 
 processDepositAddressRequests()
 processIncomingDeposits()
+transferToColdWallet()
