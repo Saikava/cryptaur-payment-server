@@ -1,11 +1,19 @@
 #! /usr/bin/env python2
 
-import json, jsonrpclib, time
+import sys, os, json, jsonrpclib, time
 import database, notify
 import config as configlib
 
-coinname="eth"
-config=configlib.config["coins"][coinname]
+filename=os.path.splitext(os.path.basename(sys.argv[0]))[0]
+if not filename.startswith("service-"):
+    sys.exit("Failed to determine coin name")
+coinname=filename.replace("service-", "")
+
+try:
+    config=configlib.config["coins"][coinname]
+except:
+    sys.exit('No configuration for coin "{0}"'.format(coinname))
+
 walletrpc=jsonrpclib.jsonrpc.Server("http://{0}:{1}".format(config["host"], config["port"]))
 
 accountIsLocked=True
@@ -14,7 +22,7 @@ accountIsLocked=True
 def depositNotify(txid, vout, userid, amount, conf):
     global coinname
 
-    print("Notify deposit {0}-{1} {2} {3} for user {4} with {5} confirmations".format(txid, vout, amount, coinname.upper(), userid, conf))
+    print("Notify deposit {0} {1} {2} for user {3} with {4} confirmations".format(txid, amount, coinname.upper(), userid, conf))
     if notify.notify(reason="deposit", coin=coinname.upper(), txid=txid, vout=vout, userid=userid, amount=amount, conf=conf):
         print("> Accepted!")
         return True
