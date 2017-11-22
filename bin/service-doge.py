@@ -1,9 +1,20 @@
 #! /usr/bin/env python2
 
-import json, jsonrpclib
-import config, database, notify
+import sys, os, json, jsonrpclib
+import database, notify
+import config as configlib
 
-coinname="doge"
+filename=os.path.splitext(os.path.basename(sys.argv[0]))[0]
+if not filename.startswith("service-"):
+    sys.exit("Failed to determine coin name")
+coinname=filename.replace("service-", "")
+
+try:
+    config=configlib.config["coins"][coinname]
+except:
+    sys.exit('No configuration for coin "{0}"'.format(coinname))
+walletrpc=jsonrpclib.jsonrpc.Server("http://{0}:{1}@{2}:{3}".format(config["user"], config["password"], config["host"], config["port"]))
+
 trustWalletAccounts=False
 
 def depositNotify(txid, vout, userid, amount, conf):
@@ -31,6 +42,8 @@ def processDepositAddressRequests():
         if notify.notify(reason="address", coin=coinname, userid=userid, address=address):
             dbda.markAsNotified(userid)
             print("> Accepted!")
+        else:
+            print("> Rejected!")
 
 def processIncomingDeposits():
     global walletrpc
@@ -105,9 +118,6 @@ def processIncomingDeposits():
 
     dbd.setLastCheckedBlockHeight(topBlockHeight, new_unacceptedList)
 
-
-rpcparams=config.config["coins"][coinname]
-walletrpc=jsonrpclib.jsonrpc.Server("http://{0}:{1}@{2}:{3}".format(rpcparams["user"], rpcparams["password"], rpcparams["host"], rpcparams["port"]))
 
 processDepositAddressRequests()
 processIncomingDeposits()
