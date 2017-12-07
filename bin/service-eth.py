@@ -37,21 +37,30 @@ def processDepositAddressRequests():
     global walletrpc, accountIsLocked
 
     dbda=database.DepositAddresses(coinname)
+    depositMasterAddress=config["deposit-master"]
+    contractAddress=config["contract-address"]
+
+    if "deposit-master-balance" in config["alert"]:
+        minimumBalance=config["alert"]["deposit-master-balance"]
+        if minimumBalance is not None:
+            currentBalance=int(walletrpc.eth_getBalance(depositMasterAddress, "latest"), 16)/1E18
+            if currentBalance<minimumBalance:
+                notify.notify(reason="alarm", message="Low deposit master account balance", data={"coin": coinname.upper(), "address": depositMasterAddress, "minimum-balance": minimumBalance, "current-balance": currentBalance})
 
     pendingTransactions=[]
     for userid in dbda.listPendingRequests(100):
         useridAsHex=hex(userid)[2:].rjust(64, '0')
 
-        address=walletrpc.eth_call({"from": config["deposit-master"], "to": config["contract-address"], "data": "0x877806af"+useridAsHex}, "latest")
+        address=walletrpc.eth_call({"from": depositMasterAddress, "to": contractAddress, "data": "0x877806af"+useridAsHex}, "latest")
         if address!="0x"+64*"0":
             address="0x"+address[-40:]
             dbda.storeAddress(userid, address)
         else:
             if accountIsLocked:
-                walletrpc.personal_unlockAccount(config["deposit-master"], config["password"])
+                walletrpc.personal_unlockAccount(depositMasterAddress, config["password"])
                 accountIsLocked=False
 
-            txhash=walletrpc.eth_sendTransaction({"from": config["deposit-master"], "to": config["contract-address"], "data": "0x32331feb"+useridAsHex, "gas": "0x493e0"})
+            txhash=walletrpc.eth_sendTransaction({"from": depositMasterAddress, "to": contractAddress, "data": "0x32331feb"+useridAsHex, "gas": "0x493e0"})
             pendingTransactions.append(txhash)
 
     for txhash in pendingTransactions:
