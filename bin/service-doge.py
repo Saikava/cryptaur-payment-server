@@ -1,8 +1,11 @@
 #! /usr/bin/env python2
 
-import sys, os, json, jsonrpclib
+import sys, os, json
 import database, notify
 import config as configlib
+
+sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), "jsonrpclib"))
+import jsonrpclib
 
 filename=os.path.splitext(os.path.basename(sys.argv[0]))[0]
 if not filename.startswith("service-"):

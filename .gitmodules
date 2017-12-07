@@ -1,0 +1,3 @@
+[submodule "bin/jsonrpclib"]
+	path = bin/jsonrpclib
+	url = https://github.com/Cryptaur/jsonrpclib.git
