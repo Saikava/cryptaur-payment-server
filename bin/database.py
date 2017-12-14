@@ -19,9 +19,9 @@ db.cursor().execute("""CREATE TABLE IF NOT EXISTS depositAddresses
 CREATE TABLE IF NOT EXISTS addressToUserID
 (
   coinname TEXT(16) NOT NULL,
-  address TEXT(255) NOT NULL,
+  address TEXT(127) NOT NULL,
   userid INT NOT NULL,
-  PRIMARY KEY(coinname(16), address(255))
+  PRIMARY KEY(coinname(16), address(127))
 );
 
 CREATE TABLE IF NOT EXISTS lastCheckedBlockHeight
@@ -34,14 +34,15 @@ CREATE TABLE IF NOT EXISTS lastCheckedBlockHeight
 CREATE TABLE IF NOT EXISTS unacceptedTransactions
 (
   coinname TEXT(16) NOT NULL,
-  txhash TEXT(255) NOT NULL,
+  txhash TEXT(127) NOT NULL,
   vout INT NOT NULL,
   amount TEXT(100) NOT NULL,
   blockHeight INT,
   userid INT NOT NULL,
-  PRIMARY KEY(coinname(16), txhash(255), vout)
+  PRIMARY KEY(coinname(16), txhash(127), vout)
 );
 """)
+db.commit()
 
 class DepositAddresses:
     def __init__(__self__, coinname):
