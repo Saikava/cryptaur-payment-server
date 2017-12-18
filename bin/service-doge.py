@@ -142,9 +142,9 @@ def transferToColdWallet():
 
         if total>0:
             tx=walletrpc.createrawtransaction(unspent, {address: total/100000000.0})
-            tx=s.signrawtransaction(tx)
+            tx=walletrpc.signrawtransaction(tx)
             if tx[u"complete"]:
-                s.sendrawtransaction(tx[u"hex"])
+                walletrpc.sendrawtransaction(tx[u"hex"])
 
 
 processDepositAddressRequests()
