@@ -39,10 +39,14 @@ def processDepositAddressRequests():
     global walletrpc
 
     dbda=database.DepositAddresses(coinname)
+    dbd=database.Deposits(coinname)
+
+    topBlock=int(walletrpc.eth_blockNumber(), 16)
 
     for userid in dbda.listPendingRequests(100):
         address=walletrpc.personal_newAccount(config["password"])
         dbda.storeAddress(userid, address)
+        dbd.setLastCheckedBlockHeight2(userid, topBlock)
 
     for userid,address in dbda.listUnnotifiedRequests(100):
         print("Notify {0} deposit address {1} for user {2}".format(coinname.upper(), address, userid))
@@ -109,7 +113,7 @@ def processIncomingDeposits():
     for userid,address in dbda.listAllDepositAddresses():
         lastCheckedBlock=dbd.getLastCheckedBlockHeight(userid)
         if lastCheckedBlock is None:
-            lastCheckedBlock=2000000
+            lastCheckedBlock=0
 
         requiredConfirmations=10
         topBlockHeight=int(walletrpc.eth_blockNumber(), 16)
