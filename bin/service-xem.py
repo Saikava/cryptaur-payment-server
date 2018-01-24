@@ -24,7 +24,7 @@ class HttpException(Exception):
 def depositNotify(txid, vout, userid, amount, conf):
     global coinname
 
-    logger.message("Notify deposit {0} {1} {2} for user {3} with {4} confirmations".format(txid, amount, coinname.upper(), userid, conf))
+    logger.message("Notify deposit {0} {1} {2} for user {3} with {4} confirmation(s)".format(txid, amount, coinname.upper(), userid, conf))
 
     if notify.notify(reason="deposit", coin=coinname.upper(), txid=txid, vout=vout, userid=userid, amount=amount, conf=conf):
         logger.message("> Accepted!")
@@ -139,20 +139,21 @@ if len(tx_list)>0:
 else:
     dbd.setLastCheckedBlockHeight(last_tx_id, new_unacceptedList)
 
-if "transfer" in config and balance()>=config["transfer"]["min-amount"]+config["transfer"]["fee"]:
-    fee=config["transfer"]["fee"]
-    amount=balance()-fee
+b=int(1000000*balance())
+if "transfer" in config and b>=int(1000000*config["transfer"]["min-amount"]):
+    fee=min(max((b//10000000000)*50000, 50000), 1250000)
+    amount=b-fee
     address=config["transfer"]["address"]
 
-    logger.message("Forwarding {0:.6f} XEM to {1}".format(amount, address))
+    logger.message("Forwarding {0:.6f} XEM with fee {1:.6f} XEM to {2}".format(amount/1000000.0, fee/1000000.0, address))
     try:
         ts=send_request("/chain/last-block")["timeStamp"]
 
         transfer={}
         transfer["timeStamp"]=ts
         transfer["deadline"]=ts+3600
-        transfer["amount"]=int(amount*1000000)
-        transfer["fee"]=int(fee*1000000)
+        transfer["amount"]=amount
+        transfer["fee"]=fee
         transfer["recipient"]=address
         transfer["type"]=257
         #transfer["message"]={}
