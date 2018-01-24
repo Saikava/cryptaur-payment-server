@@ -31,7 +31,6 @@ if not os.path.isdir(cryptaurInstallationDirectory):
     cryptaurInstallationDirectory=os.path.join(os.pardir, os.pardir)
 
 coinname=os.path.basename(os.path.abspath(os.path.dirname(sys.argv[0])))
-executable=os.path.join(cryptaurInstallationDirectory, "bin", "getaddress.py")
 
 try:
     userid=query_args["user"][0]
@@ -39,6 +38,19 @@ except:
     sys.stdout.write(b"Status: 400 Bad Request\n\n")
     sys.exit(0)
 
-sys.stdout.write(b"Status: 200 OK\nContent-Type: application/json\n\n")
-sys.stdout.flush()
-subprocess.call([executable, coinname, str(userid)])
+executable=os.path.join(cryptaurInstallationDirectory, "bin", "getaddress-{0}.py".format(coinname))
+cmdline=None
+if os.access(executable, os.X_OK):
+    cmdline=[executable, str(userid)]
+
+if cmdline is None:
+    executable=os.path.join(cryptaurInstallationDirectory, "bin", "getaddress.py")
+    if os.access(executable, os.X_OK):
+        cmdline=[executable, coinname, str(userid)]
+
+if cmdline is None:
+    sys.stdout.write(b"Status: 500 Internal Server Error\n\n")
+else:
+    sys.stdout.write(b"Status: 200 OK\nContent-Type: application/json\n\n")
+    sys.stdout.flush()
+    subprocess.call(cmdline)
