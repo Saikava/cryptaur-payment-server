@@ -3,6 +3,7 @@
 import sys, os, json, time
 import database, notify
 import config as configlib
+import logger as loggerlib
 
 sys.path.insert(0, os.path.join(os.path.dirname(sys.argv[0]), "jsonrpclib"))
 import jsonrpclib
@@ -11,6 +12,8 @@ filename=os.path.splitext(os.path.basename(sys.argv[0]))[0]
 if not filename.startswith("service2-"):
     sys.exit("Failed to determine coin name")
 coinname=filename.replace("service2-", "")
+
+logger=loggerlib.Logger(os.path.join(os.path.dirname(sys.argv[0]), os.pardir, "var", "log", "deposits-{0}.log".format(coinname)))
 
 
 try:
@@ -27,15 +30,16 @@ def hex(n):
 def depositNotify(txid, vout, userid, amount, conf):
     global coinname
 
-    print("Notify deposit {0} {1} {2} for user {3} with {4} confirmations".format(txid, amount, coinname.upper(), userid, conf))
+    logger.message("Notify deposit {0} {1} {2} for user {3} with {4} confirmations".format(txid, amount, coinname.upper(), userid, conf))
+
     if notify.notify(reason="deposit", coin=coinname.upper(), txid=txid, vout=vout, userid=userid, amount=amount, conf=conf):
-        print("> Accepted!")
+        logger.message("> Accepted!")
         return True
     else:
-        print("> Rejected!")
+        logger.message("> Rejected!")
         return False
 
-def processDepositAddressRequests():
+def processDepositAddressRequests(n=100):
     global walletrpc
 
     dbda=database.DepositAddresses(coinname)
@@ -43,18 +47,18 @@ def processDepositAddressRequests():
 
     topBlock=int(walletrpc.eth_blockNumber(), 16)
 
-    for userid in dbda.listPendingRequests(100):
+    for userid in dbda.listPendingRequests(n):
         address=walletrpc.personal_newAccount(config["password"])
         dbda.storeAddress(userid, address)
         dbd.setLastCheckedBlockHeight2(userid, topBlock)
 
     for userid,address in dbda.listUnnotifiedRequests(100):
-        print("Notify {0} deposit address {1} for user {2}".format(coinname.upper(), address, userid))
+        logger.message("Notify {0} deposit address {1} for user {2}".format(coinname.upper(), address, userid))
         if notify.notify(reason="address", coin=coinname, userid=userid, address=address):
             dbda.markAsNotified(userid)
-            print("> Accepted!")
+            logger.message("> Accepted!")
         else:
-            print("> Rejected!")
+            logger.message("> Rejected!")
 
 def findDepositsInBlock(address, block, balanceDifference):
     global walletrpc
@@ -73,7 +77,7 @@ def findDepositsInBlock(address, block, balanceDifference):
 
             res.append((tx["hash"], block, value))
 
-    if balanceDifference!=0:
+    if balanceDifference>0:
         value=str(balanceDifference).rjust(19, '0')
         value=value[:-18]+"."+value[-18:]
 
@@ -110,17 +114,24 @@ def processIncomingDeposits():
     dbda=database.DepositAddresses(coinname)
     dbd=database.Deposits(coinname)
 
+    allAddressesSorted=[]
     for userid,address in dbda.listAllDepositAddresses():
         lastCheckedBlock=dbd.getLastCheckedBlockHeight(userid)
         if lastCheckedBlock is None:
             lastCheckedBlock=0
+        allAddressesSorted.append((lastCheckedBlock, userid, address))
+    allAddressesSorted.sort()
 
+    for lastCheckedBlock,userid,address in allAddressesSorted:
         requiredConfirmations=10
         topBlockHeight=int(walletrpc.eth_blockNumber(), 16)
         checkUpToBlock=topBlockHeight-requiredConfirmations
 
+        logger.message("Checking deposits for user {0}, block range {1}-{2}".format(userid, lastCheckedBlock, checkUpToBlock))
         if lastCheckedBlock>=checkUpToBlock:
             continue
+
+        processDepositAddressRequests(1)
 
         old_txlist=dbd.listUnacceptedDeposits(userid)
         new_unacceptedList={}
@@ -171,7 +182,7 @@ def processIncomingDeposits():
         if forwardtx is None and "transfer" in config:
             balance=int(walletrpc.eth_getBalance(address, "latest"), 16)
             if balance>=1E18*config["transfer"]["min-amount"]:
-                print "Forwarding money to {0}...".format(config["transfer"]["address"])
+                logger.message("Forwarding money to {0}...".format(config["transfer"]["address"]))
                 gasPrice=int(walletrpc.eth_gasPrice(), 16)
                 gas=config["transfer"]["gas-amount"]
 
@@ -180,7 +191,7 @@ def processIncomingDeposits():
 #                print {"from": address, "to": config["transfer"]["address"], "gasPrice": hex(gasPrice), "gas": hex(gas), "value": hex(balance-gas*gasPrice)}
                 txhash=walletrpc.eth_sendTransaction({"from": address, "to": config["transfer"]["address"], "gasPrice": hex(gasPrice), "gas": hex(gas), "value": hex(balance-gas*gasPrice)})
                 dbd.setForwardTransaction(userid, txhash)
-                print "> OK ({0})".format(txhash)
+                logger.message("> OK ({0})".format(txhash))
 
 processDepositAddressRequests()
 processIncomingDeposits()
