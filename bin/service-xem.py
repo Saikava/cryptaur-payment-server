@@ -4,6 +4,7 @@ import sys, os, json, time, httplib, binascii
 import database, notify
 import config as configlib
 import logger as loggerlib
+import obfuscate
 
 coinname="xem"
 logger=loggerlib.Logger(os.path.join(os.path.dirname(sys.argv[0]), os.pardir, "var", "log", "deposits-{0}.log".format(coinname)))
@@ -123,7 +124,8 @@ for tx in tx_list:
             continue
 
         try:
-            userid=int(binascii.a2b_hex(txStruct["message"]["payload"]))
+#            userid=int(binascii.a2b_hex(txStruct["message"]["payload"]))
+            userid=obfuscate.decodeUserId(txStruct["message"]["payload"], config["userid-obfuscate-key"])
         except:
             logger.message("Unknown recipient txid:{0} amount:{1:.6f} height:{2}".format(txhash, amount, blockHeight))
             continue
